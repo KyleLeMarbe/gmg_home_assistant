@@ -12,7 +12,7 @@ Install via HACS
     <li>add this github URI as integration</li>
     <li>click add</li>
     </br>
-    <li>click Exlore & download repo bottom right</li>
+    <li>click Explore & download repo bottom right</li>
     <li>Search & select Green Mountain Grill</li>
     <li>Click install</li>
 </ul>
@@ -24,11 +24,21 @@ Add below to configuration.yaml in home assistant
         - platform: gmg
 ```
 
+```yaml
+    #hard coded configuration coming soon.
+    climate:
+        - platform: gmg
+          ip_address: x.x.x.x
+          serialNumber: xxxxx
+
+```
+
 ## Requirements 
 
 <ul>
-    <li>UDP port 8080 open between home assistant & GMG</li>
+    <li>UDP port 8080 open between home assistant & GMG (if on the same network, this should be open automatically)</li>
     <li>Auto discovery will discover multiple GMG devices if on same network as home assistant</li>
+    <li>Your grills must be on and connected to wifi when restarting HomeAssistant.  This will initialize your grills and add entities.</li>
 </ul>
 
 ## TODO 

@@ -12,9 +12,7 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-
-def grills(timeout = 1, ip_bind_address = '0.0.0.0'):
-
+def autoDiscoverGrills(timeout, ip_bind_address):
     _LOGGER.debug("Opening up udp sockets and broadcasting for grills.")
    
     interfaces = socket.getaddrinfo(host=socket.gethostname(), port=None, family=socket.AF_INET)
@@ -68,9 +66,17 @@ def grills(timeout = 1, ip_bind_address = '0.0.0.0'):
         finally:
             # Always close the socket
             sock.close()
+    
+    return grills
+
+def grills(timeout = 1, ip_bind_address = '0.0.0.0'):
+    grills = autoDiscoverGrills(timeout, ip_bind_address)
+    
+    #TODO: add manual configuration for grills so they do not disable if you are restarting HA and the grill is not on
 
     _LOGGER.debug(f"Found {len(grills)} grills.")
     return grills
+
 
 
 class grill(object):
@@ -95,39 +101,40 @@ class grill(object):
 
     def gmg_status_response (self, value_list):
         # accept list of values from status 
-        self.state = {}
+        if value_list is not None:
+            self.state = {}
 
-        _LOGGER.debug(f"Status response raw: {value_list}")
+            _LOGGER.debug(f"Status response raw: {value_list}")
 
-        # grill general status
-        try:
-            self.state['on'] = value_list[30]
-            self.state['temp'] = value_list[2]
-            self.state['temp_high'] = value_list[3]
-            self.state['grill_set_temp'] = value_list[6]
-            self.state['grill_set_temp_high'] = value_list[7]
+            # grill general status
+            try:
+                self.state['on'] = value_list[30]
+                self.state['temp'] = value_list[2]
+                self.state['temp_high'] = value_list[3]
+                self.state['grill_set_temp'] = value_list[6]
+                self.state['grill_set_temp_high'] = value_list[7]
 
-            # probe 1 stats
-            self.state['probe1_temp'] = value_list[4]
-            self.state['probe1_temp_high'] = value_list[5]
-            self.state['probe1_set_temp'] = value_list[28]
-            self.state['probe1_set_temp_high'] = value_list[29]
-            
-            # probe 2 stats
-            self.state['probe2_temp'] = value_list[16]
-            self.state['probe2_temp_high'] = value_list[17]
-            self.state['probe2_set_temp'] = value_list[18]
-            self.state['probe2_set_temp_high'] = value_list[19]
+                # probe 1 stats
+                self.state['probe1_temp'] = value_list[4]
+                self.state['probe1_temp_high'] = value_list[5]
+                self.state['probe1_set_temp'] = value_list[28]
+                self.state['probe1_set_temp_high'] = value_list[29]
+                
+                # probe 2 stats
+                self.state['probe2_temp'] = value_list[16]
+                self.state['probe2_temp_high'] = value_list[17]
+                self.state['probe2_set_temp'] = value_list[18]
+                self.state['probe2_set_temp_high'] = value_list[19]
 
-            # Grill health stats
-            self.state['fireState'] = value_list[32]
-            self.state['fireStatePercentage'] = value_list[33]
-            self.state['warnState'] = value_list[24]
+                # Grill health stats
+                self.state['fireState'] = value_list[32]
+                self.state['fireStatePercentage'] = value_list[33]
+                self.state['warnState'] = value_list[24]
 
-        except Exception as e:
-            print(e)
-            
-        _LOGGER.debug(f"Status response: {self.state}") 
+            except Exception as e:
+                _LOGGER.error(e)
+                
+            _LOGGER.debug(f"Status response: {self.state}") 
 
         return self.state
 
@@ -176,27 +183,31 @@ class grill(object):
 
     def status(self):
         """Get status of grill"""
-
         status = None
         count = 0
 
-        # No response from grill so resend status request but no more than 5 times
+        # No response from grill so resend status request but no more than 3 times
         # cannot add delay here because it will delay the whole program (Home assistant)
-        while status is None or count < 5:
+        while status is None and count < 1:
             status = self.send(grill.CODE_STATUS)
 
             # add delay of 2 seconds to allow grill to process status   
             count += 1
 
         if status is None:
-            raise Warning("No response from grill")
-               
-        return self.gmg_status_response(list(status))
+            _LOGGER.debug(f"No response from grill {self._serial_number}")
+
+        if status is not None:
+            status = list(status)
+            _LOGGER.debug(f"Setting grill status: {status}")
+
+        return self.gmg_status_response(status)
 
 
     def serial(self):
         """Get serial number of grill"""
-        self._serial_number = self.send(grill.CODE_SERIAL).decode('utf-8')
+        if self._serial_number is None:
+            self._serial_number = self.send(grill.CODE_SERIAL).decode('utf-8')
 
         return self._serial_number
 
@@ -213,8 +224,8 @@ class grill(object):
             data, _ = sock.recvfrom(1024)
         
         except socket.timeout:
-            print('timeout')
+            _LOGGER.debug(f"Socket timed out sending message: {message}")
         except Exception as e: 
-            print(e)
+            _LOGGER.error(e)
            
         return data
