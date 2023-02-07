@@ -4,25 +4,45 @@
 from ast import Not
 from html import entities
 from importlib.metadata import entry_points
-from .gmg import grills, grill
+from .gmg import grills, grill, createGrillObject
 #from gmg import grills,grill
 import logging
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from typing import List, Optional
 from homeassistant.components.climate import ClimateEntity
+from homeassistant.components.climate import PLATFORM_SCHEMA
 from homeassistant.components.climate.const import (
     HVAC_MODE_OFF, HVAC_MODE_HEAT, SUPPORT_TARGET_TEMPERATURE, HVAC_MODE_HEAT, HVAC_MODE_OFF, HVAC_MODE_FAN_ONLY)
 from homeassistant.const import (
     ATTR_TEMPERATURE,
     TEMP_FAHRENHEIT)
+from homeassistant.const import CONF_HOST
 
 _LOGGER = logging.getLogger(__name__)
+
+# Validation of the user's configuration
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
+    vol.Optional(CONF_HOST): cv.string,
+    vol.Optional("grill_name"): cv.string
+})
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     entities = []
     _LOGGER.debug("Looking for grills")
 
-    # look for grills.. timeout = 2
-    all_grills = grills(2)
+    hostIP = config.get(CONF_HOST)
+    hostName = config.get("grill_name")
+
+    _LOGGER.debug(f"hostIP from config file: {hostIP}")
+
+    if hostIP is None:
+        # look for grills.. timeout = 2
+        _LOGGER.debug("No grills configured in yml, autodiscovering grills.")
+        all_grills = grills(2)
+    else:
+        _LOGGER.debug(f"Grill found in configuration file. {hostIP},{hostName}")
+        all_grills = createGrillObject(hostIP, hostName)
 
     for my_grill in all_grills: 
         _LOGGER.debug(f"Found grill IP: {my_grill._ip} Serial: {my_grill._serial_number}")

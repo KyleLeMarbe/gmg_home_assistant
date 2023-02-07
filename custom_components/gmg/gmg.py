@@ -12,6 +12,12 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
+def createGrillObject(ipAddress, grillName):
+    grills = []
+    grills.append(grill(ipAddress, grillName))
+
+    return grills
+
 def autoDiscoverGrills(timeout, ip_bind_address):
     _LOGGER.debug("Opening up udp sockets and broadcasting for grills.")
    
@@ -89,6 +95,37 @@ class grill(object):
     CODE_SERIAL = b'UL!'
     CODE_STATUS = b'UR001!'
     
+
+
+    def getInitialState(self):
+        state = {}
+
+        state['on'] = 0
+        state['temp'] = 0
+        state['temp_high'] = 0
+        state['grill_set_temp'] = 0
+        state['grill_set_temp_high'] = 0
+
+           # probe 1 stats
+        state['probe1_temp'] = 0
+        state['probe1_temp_high'] = 0
+        state['probe1_set_temp'] = 0
+        state['probe1_set_temp_high'] = 0
+        
+                   # probe 2 stats
+        state['probe2_temp'] = 0
+        state['probe2_temp_high'] = 0
+        state['probe2_set_temp'] = 0
+        state['probe2_set_temp_high'] = 0
+
+           # Grill health stats
+        state['fireState'] = 0
+        state['fireStatePercentage'] = 0
+        state['warnState'] = 0
+
+        return state
+
+
     def __init__(self, ip, serial_number = ''):
         
         if not ipaddress.ip_address(ip):
@@ -98,6 +135,7 @@ class grill(object):
 
         self._ip = ip 
         self._serial_number = serial_number
+        self.state = self.getInitialState()
 
     def gmg_status_response (self, value_list):
         # accept list of values from status 
@@ -135,6 +173,7 @@ class grill(object):
                 _LOGGER.error(e)
                 
             _LOGGER.debug(f"Status response: {self.state}") 
+     
 
         return self.state
 
