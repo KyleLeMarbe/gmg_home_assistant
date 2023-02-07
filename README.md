@@ -20,16 +20,17 @@ Install via HACS
 Add below to configuration.yaml in home assistant
 
 ```yaml
+    #use the gmg platform with no other options to auto detect grill
     climate:
         - platform: gmg
 ```
 
 ```yaml
-    #hard coded configuration coming soon.
+    #hard coded configuration will bypass auto detection
     climate:
         - platform: gmg
-          ip_address: x.x.x.x
-          serialNumber: xxxxx
+          host: x.x.x.x
+          grill_name: xxxxx  #Recommend using the grill serial number here GMGxxxxxxxx
 
 ```
 
@@ -38,7 +39,7 @@ Add below to configuration.yaml in home assistant
 <ul>
     <li>UDP port 8080 open between home assistant & GMG (if on the same network, this should be open automatically)</li>
     <li>Auto discovery will discover multiple GMG devices if on same network as home assistant</li>
-    <li>Your grills must be on and connected to wifi when restarting HomeAssistant.  This will initialize your grills and add entities.</li>
+    <li>Your grills must be on and connected to wifi when restarting HomeAssistant when in Auto Discovery mode.  This will initialize your grills and add entities.</li>
 </ul>
 
 ## TODO 
