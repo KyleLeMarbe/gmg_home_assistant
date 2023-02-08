@@ -264,5 +264,8 @@ class grill(object):
             _LOGGER.debug(f"Socket timed out sending message: {message}")
         except Exception as e: 
             _LOGGER.error(e)
+        finally:
+            # Always close the socket
+            sock.close()
            
         return data
