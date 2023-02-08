@@ -77,8 +77,6 @@ def autoDiscoverGrills(timeout, ip_bind_address):
 
 def grills(timeout = 1, ip_bind_address = '0.0.0.0'):
     grills = autoDiscoverGrills(timeout, ip_bind_address)
-    
-    #TODO: add manual configuration for grills so they do not disable if you are restarting HA and the grill is not on
 
     _LOGGER.debug(f"Found {len(grills)} grills.")
     return grills

@@ -21,10 +21,13 @@ from homeassistant.const import CONF_HOST
 
 _LOGGER = logging.getLogger(__name__)
 
+CONF_GRILL_NAME = "grill_name"
+DEFAULT_NAME = "GMGGrill"
+
 # Validation of the user's configuration
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_HOST): cv.string,
-    vol.Optional("grill_name"): cv.string
+    vol.Optional(CONF_GRILL_NAME, default=DEFAULT_NAME): cv.string
 })
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -32,7 +35,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     _LOGGER.debug("Looking for grills")
 
     hostIP = config.get(CONF_HOST)
-    hostName = config.get("grill_name")
+    hostName = config.get(CONF_GRILL_NAME)
 
     _LOGGER.debug(f"hostIP from config file: {hostIP}")
 
