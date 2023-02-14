@@ -47,13 +47,12 @@ Add below to configuration.yaml in home assistant
 <ul>
     <li>Sensors for
         <ul>
-            <li>food probes (temperature monitor.. set temperature etc.) - in development.. Set them up as climate as you can set temp for them </li>
-            <li>
+            <li>food probes (temperature monitor.. set temperature etc.) - in development.. Set them up as climate as you can set temp for them 
                 <ul>
                     <li>Need to better detect when probes are unplugged</li>
                 </ul>
             </li>
-            <li>Warning states..</li>
+            <li>Warning states</li>
             <li>Fire States</li>
         </ul>
     </li>
