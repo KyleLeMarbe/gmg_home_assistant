@@ -159,7 +159,13 @@ class GmgGrill(ClimateEntity):
     @property
     def current_temperature(self) -> None:
         """Return current temp of the grill"""
-        return self._state.get('temp')
+        grillTemp = self._state.get('temp')
+        tempMultiplier = self._state.get('temp_high')
+
+        if tempMultiplier == 1:
+            grillTemp = 256 + grillTemp
+
+        return grillTemp
 
     @property
     def target_temperature_step(self) -> None:
@@ -169,7 +175,13 @@ class GmgGrill(ClimateEntity):
     @property
     def target_temperature(self) -> None:
         """Return what the temp is set to go to"""
-        return self._state.get('grill_set_temp')
+        grillSetTemp = self._state.get('grill_set_temp')
+        tempMultiplier = self._state.get('grill_set_temp_high')
+
+        if tempMultiplier == 1:
+            grillSetTemp = 256 + grillSetTemp
+
+        return grillSetTemp
 
     @property
     def max_temp(self) -> None:
@@ -296,4 +308,4 @@ class GmgGrillProbe(ClimateEntity):
         """Get latest data."""
         self._state = self._grill.status()
 
-        #_LOGGER.debug(f"State: {self._state}")
+        _LOGGER.debug(f"State: {self._state}")
