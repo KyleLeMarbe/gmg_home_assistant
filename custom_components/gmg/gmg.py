@@ -190,7 +190,6 @@ class grill(object):
 
         if target_temp < grill.MIN_TEMP_F_PROBE or target_temp > grill.MAX_TEMP_F_PROBE:
             raise ValueError(f"Target temperature {target_temp} is out of range")
-            return
 
         if probe_number == 1:
             message = b'UF' + str(target_temp).encode() + b'!'
@@ -233,8 +232,7 @@ class grill(object):
 
         if status is None:
             _LOGGER.debug(f"No response from grill {self._serial_number}")
-
-        if status is not None:
+        else:
             status = list(status)
             _LOGGER.debug(f"Setting grill status: {status}")
 
