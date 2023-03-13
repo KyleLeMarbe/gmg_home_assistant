@@ -29,7 +29,7 @@ Add below to configuration.yaml in home assistant
     #hard coded configuration will bypass auto detection
     climate:
         - platform: gmg
-          host: x.x.x.x
+          host: x.x.x.x      #IP address of grill.  Recommend setting the grill to static IP on router
           grill_name: xxxxx  #Recommend using the grill serial number here GMGxxxxxxxx
 
 ```
