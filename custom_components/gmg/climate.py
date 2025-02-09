@@ -4,22 +4,45 @@
 from ast import Not
 from html import entities
 from importlib.metadata import entry_points
-from .gmg import grills, grill
+from .gmg import grills, grill, createGrillObject
 #from gmg import grills,grill
 import logging
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from typing import List, Optional
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, UnitOfTemperature, ATTR_TEMPERATURE
+from homeassistant.components.climate import PLATFORM_SCHEMA
 from homeassistant.components.climate.const import HVACMode
 
+from homeassistant.const import CONF_HOST
 
 _LOGGER = logging.getLogger(__name__)
+
+CONF_GRILL_NAME = "grill_name"
+DEFAULT_NAME = "GMGGrill"
+
+# Validation of the user's configuration
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
+    vol.Optional(CONF_HOST): cv.string,
+    vol.Optional(CONF_GRILL_NAME, default=DEFAULT_NAME): cv.string
+})
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     entities = []
     _LOGGER.debug("Looking for grills")
 
-    # look for grills.. timeout = 2
-    all_grills = grills(2)
+    hostIP = config.get(CONF_HOST)
+    hostName = config.get(CONF_GRILL_NAME)
+
+    _LOGGER.debug(f"hostIP from config file: {hostIP}")
+
+    if hostIP is None:
+        # look for grills.. timeout = 2
+        _LOGGER.debug("No grills configured in yml, autodiscovering grills.")
+        all_grills = grills(2)
+    else:
+        _LOGGER.debug(f"Grill found in configuration file. {hostIP},{hostName}")
+        all_grills = createGrillObject(hostIP, hostName)
 
     for my_grill in all_grills: 
         _LOGGER.debug(f"Found grill IP: {my_grill._ip} Serial: {my_grill._serial_number}")
@@ -133,7 +156,13 @@ class GmgGrill(ClimateEntity):
     @property
     def current_temperature(self) -> None:
         """Return current temp of the grill"""
-        return self._state.get('temp')
+        grillTemp = self._state.get('temp')
+        tempMultiplier = self._state.get('temp_high')
+
+        if tempMultiplier == 1:
+            grillTemp = 256 + grillTemp
+
+        return grillTemp
 
     @property
     def target_temperature_step(self) -> None:
@@ -143,7 +172,13 @@ class GmgGrill(ClimateEntity):
     @property
     def target_temperature(self) -> None:
         """Return what the temp is set to go to"""
-        return self._state.get('grill_set_temp')
+        grillSetTemp = self._state.get('grill_set_temp')
+        tempMultiplier = self._state.get('grill_set_temp_high')
+
+        if tempMultiplier == 1:
+            grillSetTemp = 256 + grillSetTemp
+
+        return grillSetTemp
 
     @property
     def max_temp(self) -> None:
@@ -270,4 +305,4 @@ class GmgGrillProbe(ClimateEntity):
         """Get latest data."""
         self._state = self._grill.status()
 
-        #_LOGGER.debug(f"State: {self._state}")
+        _LOGGER.debug(f"State: {self._state}")

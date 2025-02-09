@@ -12,9 +12,13 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
+def createGrillObject(ipAddress, grillName):
+    grills = []
+    grills.append(grill(ipAddress, grillName))
 
-def grills(timeout = 1, ip_bind_address = '0.0.0.0'):
+    return grills
 
+def autoDiscoverGrills(timeout, ip_bind_address):
     _LOGGER.debug("Opening up udp sockets and broadcasting for grills.")
    
     interfaces = socket.getaddrinfo(host=socket.gethostname(), port=None, family=socket.AF_INET)
@@ -30,6 +34,7 @@ def grills(timeout = 1, ip_bind_address = '0.0.0.0'):
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            #Bind to the specific IP for the adapter and use port 0 to signify any open port by the OS
             sock.bind((ip, 0))
             
             # Each recv should have the full timeout period to complete
@@ -40,6 +45,7 @@ def grills(timeout = 1, ip_bind_address = '0.0.0.0'):
             _LOGGER.debug("Broadcast sent.")
 
             while True:
+                addGrill = True
                 # Get some packets from the network
                 data, (address, retSocket) = sock.recvfrom(1024)
                 response = data.decode('utf-8')
@@ -49,7 +55,13 @@ def grills(timeout = 1, ip_bind_address = '0.0.0.0'):
                 try:
                     if response.startswith('GMG'):
                         _LOGGER.debug(f"Found grill {address}:{retSocket}, {response}")
-                        grills.append(grill(address, response))
+                        for grillTest in grills:
+                            if grillTest._serial_number == response:  # TODO: Define a property for serial number
+                                _LOGGER.debug(f"Grill {response} is a duplicate.  Not adding to collection.")
+                                addGrill = False
+
+                        if addGrill:
+                            grills.append(grill(address, response))
                 except ValueError:
                     pass
 
@@ -57,13 +69,18 @@ def grills(timeout = 1, ip_bind_address = '0.0.0.0'):
             # This will always happen, a timeout occurs when we no longer hear from any grills
             # This is the required flow to break out of the `while True:` statement above.
             _LOGGER.debug("Socket timed out.")
-            pass
         finally:
             # Always close the socket
             sock.close()
+    
+    return grills
+
+def grills(timeout = 1, ip_bind_address = '0.0.0.0'):
+    grills = autoDiscoverGrills(timeout, ip_bind_address)
 
     _LOGGER.debug(f"Found {len(grills)} grills.")
     return grills
+
 
 
 class grill(object):
@@ -76,6 +93,37 @@ class grill(object):
     CODE_SERIAL = b'UL!'
     CODE_STATUS = b'UR001!'
     
+
+
+    def getInitialState(self):
+        state = {}
+
+        state['on'] = 0
+        state['temp'] = 0
+        state['temp_high'] = 0
+        state['grill_set_temp'] = 0
+        state['grill_set_temp_high'] = 0
+
+           # probe 1 stats
+        state['probe1_temp'] = 0
+        state['probe1_temp_high'] = 0
+        state['probe1_set_temp'] = 0
+        state['probe1_set_temp_high'] = 0
+        
+                   # probe 2 stats
+        state['probe2_temp'] = 0
+        state['probe2_temp_high'] = 0
+        state['probe2_set_temp'] = 0
+        state['probe2_set_temp_high'] = 0
+
+           # Grill health stats
+        state['fireState'] = 0
+        state['fireStatePercentage'] = 0
+        state['warnState'] = 0
+
+        return state
+
+
     def __init__(self, ip, serial_number = ''):
         
         if not ipaddress.ip_address(ip):
@@ -85,42 +133,45 @@ class grill(object):
 
         self._ip = ip 
         self._serial_number = serial_number
+        self.state = self.getInitialState()
 
     def gmg_status_response (self, value_list):
         # accept list of values from status 
-        self.state = {}
+        if value_list is not None:
+            self.state = {}
 
-        _LOGGER.debug(f"Status response raw: {value_list}")
+            _LOGGER.debug(f"Status response raw: {value_list}")
 
-        # grill general status
-        try:
-            self.state['on'] = value_list[30]
-            self.state['temp'] = value_list[2]
-            self.state['temp_high'] = value_list[3]
-            self.state['grill_set_temp'] = value_list[6]
-            self.state['grill_set_temp_high'] = value_list[7]
+            # grill general status
+            try:
+                self.state['on'] = value_list[30]
+                self.state['temp'] = value_list[2]
+                self.state['temp_high'] = value_list[3]
+                self.state['grill_set_temp'] = value_list[6]
+                self.state['grill_set_temp_high'] = value_list[7]
 
-            # probe 1 stats
-            self.state['probe1_temp'] = value_list[4]
-            self.state['probe1_temp_high'] = value_list[5]
-            self.state['probe1_set_temp'] = value_list[28]
-            self.state['probe1_set_temp_high'] = value_list[29]
-            
-            # probe 2 stats
-            self.state['probe2_temp'] = value_list[16]
-            self.state['probe2_temp_high'] = value_list[17]
-            self.state['probe2_set_temp'] = value_list[18]
-            self.state['probe2_set_temp_high'] = value_list[19]
+                # probe 1 stats
+                self.state['probe1_temp'] = value_list[4]
+                self.state['probe1_temp_high'] = value_list[5]
+                self.state['probe1_set_temp'] = value_list[28]
+                self.state['probe1_set_temp_high'] = value_list[29]
+                
+                # probe 2 stats
+                self.state['probe2_temp'] = value_list[16]
+                self.state['probe2_temp_high'] = value_list[17]
+                self.state['probe2_set_temp'] = value_list[18]
+                self.state['probe2_set_temp_high'] = value_list[19]
 
-            # Grill health stats
-            self.state['fireState'] = value_list[32]
-            self.state['fireStatePercentage'] = value_list[33]
-            self.state['warnState'] = value_list[24]
+                # Grill health stats
+                self.state['fireState'] = value_list[32]
+                self.state['fireStatePercentage'] = value_list[33]
+                self.state['warnState'] = value_list[24]
 
-        except Exception as e:
-            print(e)
-            
-        _LOGGER.debug(f"Status response: {self.state}") 
+            except Exception as e:
+                _LOGGER.error(e)
+                
+            _LOGGER.debug(f"Status response: {self.state}") 
+     
 
         return self.state
 
@@ -139,7 +190,6 @@ class grill(object):
 
         if target_temp < grill.MIN_TEMP_F_PROBE or target_temp > grill.MAX_TEMP_F_PROBE:
             raise ValueError(f"Target temperature {target_temp} is out of range")
-            return
 
         if probe_number == 1:
             message = b'UF' + str(target_temp).encode() + b'!'
@@ -169,27 +219,30 @@ class grill(object):
 
     def status(self):
         """Get status of grill"""
-
         status = None
         count = 0
 
-        # No response from grill so resend status request but no more than 5 times
+        # No response from grill so resend status request but no more than 3 times
         # cannot add delay here because it will delay the whole program (Home assistant)
-        while status is None or count < 5:
+        while status is None and count < 1:
             status = self.send(grill.CODE_STATUS)
 
             # add delay of 2 seconds to allow grill to process status   
             count += 1
 
         if status is None:
-            raise Warning("No response from grill")
-               
-        return self.gmg_status_response(list(status))
+            _LOGGER.debug(f"No response from grill {self._serial_number}")
+        else:
+            status = list(status)
+            _LOGGER.debug(f"Setting grill status: {status}")
+
+        return self.gmg_status_response(status)
 
 
     def serial(self):
         """Get serial number of grill"""
-        self._serial_number = self.send(grill.CODE_SERIAL).decode('utf-8')
+        if self._serial_number is None:
+            self._serial_number = self.send(grill.CODE_SERIAL).decode('utf-8')
 
         return self._serial_number
 
@@ -206,8 +259,11 @@ class grill(object):
             data, _ = sock.recvfrom(1024)
         
         except socket.timeout:
-            print('timeout')
+            _LOGGER.debug(f"Socket timed out sending message: {message}")
         except Exception as e: 
-            print(e)
+            _LOGGER.error(e)
+        finally:
+            # Always close the socket
+            sock.close()
            
         return data
