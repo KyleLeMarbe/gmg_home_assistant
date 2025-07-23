@@ -5,7 +5,6 @@ from ast import Not
 from html import entities
 from importlib.metadata import entry_points
 from .gmg import grills, grill, createGrillObject
-#from gmg import grills,grill
 import logging
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -76,22 +75,24 @@ class GmgGrill(ClimateEntity):
     def set_temperature(self, **kwargs):
         """Set new target temperature."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
+        _currentTargetTemp = self.target_temperature
 
         if temperature is None:
             return
-        if temperature == self._state['grill_set_temp']:
+        if temperature == _currentTargetTemp:
             return
         
         # Add in section if grill is not on to error... 
-        if self._state['on'] == 0:
+        if self.hvac_mode == HVACMode.OFF:
             _LOGGER.warning("Grill is not on, cannot set temperature")
             # TODO: Add in section to turn on grill.. May not do this to prevent accidential turning on of grill. 
             return
 
-        # Add another section if grill not 150 F to not raise temp.
-        if self._state['temp'] < 145:
+        grillTemp = self.current_temperature
+
+        if grillTemp < 140:
             # GMG manual says need to wait until 150 F at least before changing temp 
-            _LOGGER.warning(f"Grill is not 150 F, cannot set temperature. Temp is {self._state['temp']}")
+            _LOGGER.warning(f"Grill is not 150 F, cannot set temperature. Temp is {grillTemp}")
             return
 
         try:
@@ -150,7 +151,6 @@ class GmgGrill(ClimateEntity):
     @property
     def temperature_unit(self) -> None:
         """Return the unit of measurement for the grill"""
-        # intial tests look like raw value always in F not C even when set in the app. 
         return UnitOfTemperature.FAHRENHEIT
 
     @property
@@ -268,7 +268,6 @@ class GmgGrillProbe(ClimateEntity):
     @property
     def temperature_unit(self) -> None:
         """Return the unit of measurement for the probe"""
-        # intial tests look like raw value always in F not C even when set in the app. 
         return UnitOfTemperature.FAHRENHEIT
 
     @property
